@@ -64,13 +64,19 @@ public class CertsServiceImpl implements ICertService {
 
     @Override
     public String add(Request request, ActorRef certBackgroundActorRef) throws BaseException {
+        logger.info("CertsServiceImpl:add: Starting add method for id: " + request.getRequest().get(JsonKeys.ID));
         Map<String,Object> reqMap = request.getRequest();
         if(isPresentRecipientIdAndCertId(request)){
+            logger.info("CertsServiceImpl:add: Found recipientId and certId, validating and deleting old certificate");
             validateCertAndRecipientId(reqMap);
             deleteOldCertificate((String) reqMap.get(JsonKeys.OLD_ID),certBackgroundActorRef);
+        } else {
+            logger.info("CertsServiceImpl:add: No recipientId and certId found, proceeding with new certificate");
         }
         Map<String, Object> certAddReqMap = request.getRequest();
+        logger.info("CertsServiceImpl:add: Checking if certificate ID is unique");
         assureUniqueCertId((String) certAddReqMap.get(JsonKeys.ID));
+        logger.info("CertsServiceImpl:add: Certificate ID is unique, processing record");
         processRecord(certAddReqMap,(String) request.getContext().get(JsonKeys.VERSION), certBackgroundActorRef);
         logger.info("CertsServiceImpl:add:record successfully processed with request:"+certAddReqMap.get(JsonKeys.ID));
         return (String)certAddReqMap.get(JsonKeys.ID);
@@ -119,11 +125,19 @@ public class CertsServiceImpl implements ICertService {
 
 
     private Response processRecord(Map<String, Object> certReqAddMap, String version, ActorRef certBackgroundActorRef) throws BaseException {
+        logger.info("CertsServiceImpl:processRecord: Starting processRecord for version: " + version);
+        logger.info("CertsServiceImpl:processRecord: Building certificate object");
         Certificate certificate=getCertificate(certReqAddMap);
+        logger.info("CertsServiceImpl:processRecord: Certificate object built successfully");
         if(version.equalsIgnoreCase(JsonKeys.VERSION_1)) {
+            logger.info("CertsServiceImpl:processRecord: Setting PDF URL for version 1");
             certificate.setPdfUrl((String)certReqAddMap.get(JsonKeys.PDF_URL));
+        } else {
+            logger.info("CertsServiceImpl:processRecord: Version 2, no PDF URL needed");
         }
+        logger.info("CertsServiceImpl:processRecord: Converting certificate to Map");
         Map<String,Object>recordMap= requestMapper.convertValue(certificate,Map.class);
+        logger.info("CertsServiceImpl:processRecord: Certificate converted to Map, calling CertificateUtil.insertRecord");
         return CertificateUtil.insertRecord(recordMap, certBackgroundActorRef);
     }
     private Certificate getCertificate(Map<String, Object> certReqAddMap) {

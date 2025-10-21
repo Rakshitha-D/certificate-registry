@@ -77,38 +77,52 @@ public class CertificateUtil {
     }
 
     public static Response insertRecord(Map<String,Object>certAddReqMap, ActorRef certBackgroundActorRef) throws BaseException {
+        logger.info("CertificateUtil:insertRecord: Starting insertRecord for id: " + certAddReqMap.get(JsonKeys.ID));
         Map<String,Object>certMap = new HashMap<>();
         long createdAt = System.currentTimeMillis();
         certAddReqMap.put(JsonKeys.CREATED_AT,createdAt);
         certAddReqMap.put(JsonKeys.UPDATED_AT,null);
         certMap.putAll(certAddReqMap);
+        logger.info("CertificateUtil:insertRecord: Prepared certMap with basic fields");
 
         try{
+        logger.info("CertificateUtil:insertRecord: Starting JSON serialization");
         certMap.put(JsonKeys.CREATED_AT,new Timestamp(createdAt));
         Map<String, Object> data = (Map<String, Object>) certAddReqMap.get(JsonKeys.DATA);
+        logger.info("CertificateUtil:insertRecord: Retrieved data object, size: " + (data != null ? data.size() : "null"));
         //We started with elastic search, The data object was the sole thing to start with. Then we added a Cassandra table.
         //as certificate json size is now about 650 KB, due to printUri in json which is a materialised view of svg, so we should stop pushing the printUri as part data into the
         //cassandra and ES
         if (data.containsKey(JsonKeys.PRINT_URI)) {
+            logger.info("CertificateUtil:insertRecord: Removing PRINT_URI from data");
             ((Map<String, Object>) certAddReqMap.get(JsonKeys.DATA)).remove(JsonKeys.PRINT_URI);
         }
+        logger.info("CertificateUtil:insertRecord: Serializing DATA to JSON");
         certMap.put(JsonKeys.DATA,mapper.writeValueAsString(certAddReqMap.get(JsonKeys.DATA)));
+        logger.info("CertificateUtil:insertRecord: Serializing RELATED to JSON");
         certMap.put(JsonKeys.RELATED,mapper.writeValueAsString(certAddReqMap.get(JsonKeys.RELATED)));
+        logger.info("CertificateUtil:insertRecord: Serializing RECIPIENT to JSON");
         certMap.put(JsonKeys.RECIPIENT,mapper.writeValueAsString(certAddReqMap.get(JsonKeys.RECIPIENT)));
+        logger.info("CertificateUtil:insertRecord: JSON serialization completed successfully");
         } catch (Exception ex) {
             logger.error("CertificateUtil:insertRecord: JsonProcessingException occurred.",ex);
             throw new BaseException(IResponseMessage.INVALID_REQUESTED_DATA,getLocalizedMessage(IResponseMessage.INVALID_REQUESTED_DATA,null), ResponseCode.CLIENT_ERROR.getCode());
         }
+        logger.info("CertificateUtil:insertRecord: About to call cassandraOperation.insertRecord");
         Response response = cassandraOperation.insertRecord(JsonKeys.SUNBIRD,JsonKeys.CERT_REGISTRY,certMap);
+        logger.info("CertificateUtil:insertRecord: Cassandra insert completed successfully");
         logger.info("CertificateUtil:insertRecord: record successfully inserted with id"+certAddReqMap.get(JsonKeys.ID));
         //index data to ES
+        logger.info("CertificateUtil:insertRecord: Preparing background actor request for ES indexing");
         Request req = new Request();
         RequestParams params = new RequestParams();
         params.setMsgid(MDC.get(JsonKeys.REQUEST_MESSAGE_ID));
         req.setParams(params);
         req.setOperation(ActorOperations.ADD_CERT_ES.getOperation());
         req.getRequest().put(JsonKeys.REQUEST,certAddReqMap);
+        logger.info("CertificateUtil:insertRecord: Sending message to background actor");
         certBackgroundActorRef.tell(req, ActorRef.noSender());
+        logger.info("CertificateUtil:insertRecord: Background actor message sent successfully");
         return response;
 
     }

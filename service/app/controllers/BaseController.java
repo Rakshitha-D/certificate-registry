@@ -103,19 +103,29 @@ public class BaseController extends Controller {
     public CompletionStage<Result> handleRequest(ActorRef actorRef, play.mvc.Http.Request req, RequestValidatorFunction validatorFunction,
                                                  String operation) {
         try {
+            logger.info("BaseController:handleRequest: Starting request handling for operation: " + operation);
             Request request = new Request();
             if (req.body() != null && req.body().asJson() != null) {
+                logger.info("BaseController:handleRequest: Mapping request body to Request object");
                 request = (Request) RequestMapper.mapRequest(req, Request.class);
+                logger.info("BaseController:handleRequest: Request body mapped successfully");
+            } else {
+                logger.info("BaseController:handleRequest: No request body found");
             }
             if (req.getHeaders() != null && request.getHeaders() != null) {
+                logger.info("BaseController:handleRequest: Setting request headers");
                 Map<String, Object> map = getAllRequestHeaders(req);
                 request.setHeaders(map);
             }
             if (validatorFunction != null) {
+                logger.info("BaseController:handleRequest: Applying validator function");
                 validatorFunction.apply(request);
+                logger.info("BaseController:handleRequest: Validator function completed successfully");
             }
+            logger.info("BaseController:handleRequest: Calling RequestHandler.handleRequest");
             return new RequestHandler().handleRequest(request, actorRef, operation, req);
         } catch (Exception ex) {
+            logger.error("BaseController:handleRequest: Exception occurred: " + ex.getMessage(), ex);
             return CompletableFuture.supplyAsync(() -> {
                 return RequestHandler.handleFailureResponse(ex,req);
             });

@@ -67,9 +67,12 @@ public class CertificationActor extends BaseActor {
     }
 
     private void add(Request request) throws BaseException {
+        logger.info("CertificationActor:add: Starting add operation for id: " + request.getRequest().get(JsonKeys.ID));
         String id = certService.add(request, certBackgroundActorRef);
+        logger.info("CertificationActor:add: Certificate service completed successfully, id: " + id);
         Response response = new Response();
         response.put(JsonKeys.ID, id);
+        logger.info("CertificationActor:add: Sending response back to sender");
         sender().tell(response, self());
     }
 

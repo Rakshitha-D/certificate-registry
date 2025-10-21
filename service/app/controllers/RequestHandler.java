@@ -37,15 +37,20 @@ public class RequestHandler extends BaseController {
      * @throws Exception
      */
     public CompletionStage<Result> handleRequest(Request request, Object actorRef, String operation, play.mvc.Http.Request req) throws Exception {
+        logger.info("RequestHandler:handleRequest: Starting request handling for operation: " + operation);
         request.setOperation(operation);
         Function<Object, Result> fn = object -> handleResponse(object, req);
         Future<Object> future;
         Timeout t = new Timeout(Long.valueOf(request.getTimeout()), TimeUnit.SECONDS);
+        logger.info("RequestHandler:handleRequest: Sending request to actor with timeout: " + request.getTimeout() + " seconds");
         if (actorRef instanceof ActorRef) {
+            logger.info("RequestHandler:handleRequest: Using ActorRef for communication");
             future = Patterns.ask((ActorRef) actorRef, request, t);
         } else {
+            logger.info("RequestHandler:handleRequest: Using ActorSelection for communication");
             future = Patterns.ask((ActorSelection) actorRef, request, t);
         }
+        logger.info("RequestHandler:handleRequest: Request sent to actor, waiting for response");
         return FutureConverters.asJava(future).thenApplyAsync(fn);
     }
 
@@ -109,11 +114,13 @@ public class RequestHandler extends BaseController {
      * @return
      */
     public static Result handleResponse(Object object, play.mvc.Http.Request req) {
-
+        logger.info("RequestHandler:handleResponse: Received response from actor: " + (object != null ? object.getClass().getSimpleName() : "null"));
         if (object instanceof Response) {
+            logger.info("RequestHandler:handleResponse: Response is successful, processing success response");
             Response response = (Response) object;
             return handleSuccessResponse(response, req);
         } else {
+            logger.error("RequestHandler:handleResponse: Response is not successful, processing failure response: " + object);
             return handleFailureResponse(object, req);
         }
     }
