@@ -8,6 +8,8 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.sunbird.BaseException;
 import org.sunbird.message.IResponseMessage;
 import org.sunbird.message.ResponseCode;
@@ -28,6 +30,8 @@ import utils.JsonKey;
  * @author amitkumar
  */
 public class RequestHandler extends BaseController {
+    private static final Logger logger = LoggerFactory.getLogger(RequestHandler.class);
+    
     /**
      * this methis responsible to handle the request and ask from actor
      *
